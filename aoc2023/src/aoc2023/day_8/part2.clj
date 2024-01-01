@@ -20,7 +20,7 @@
         nodes (doall (map (:nodes data) node-names))
         next-nodes (doall (map #(get % instruction) nodes))
         steps (+ c 1)]
-    (when (= (mod c 100000) 0) (println instruction steps next-nodes))
+    (when (= (mod c 1) 0) (println instruction steps next-nodes))
     (if (empty? (doall (filter #(not (= (nth % 2) \Z)) next-nodes)))
       steps
       (recur next-nodes data steps))))
