@@ -1,4 +1,4 @@
-(ns aoc2023.day-17.part1
+(ns aoc2023.day-17.part2
   (:require [clojure.string :as str]))
 
 (defn process-city [lines]
@@ -9,14 +9,19 @@
   (let [ks (for [xx (range x)
                  yy (range y)
                  dir [:l :r :u :d]
-                 step [0 1 2]]
+                 step (range 10)]
              [[xx yy] dir step])]
     (zipmap ks (repeat 999999))))
 
-(defn get-turns [dir]
-  (case dir
-    (:l :r) [[:u 0] [:d 0]]
-    (:u :d) [[:l 0] [:r 0]]))
+(defn get-next-steps [dir steps]
+  (let [turns (case dir
+                (:l :r) [[:u 0] [:d 0]]
+                (:u :d) [[:l 0] [:r 0]])
+        straight [dir (+ steps 1)]]
+    (cond
+      (< steps 3) [straight]
+      (< steps 9) (conj turns straight)
+      :else turns)))
 
 (defn take-step [pos dir]
   (vec (map + pos (case dir :l [-1 0] :r [1 0] :u [0 -1] :d [0 1]))))
@@ -28,13 +33,14 @@
 (defn potential-updates [city update-list]
   (apply
     concat
-    (for [[[pos dir steps] loss] update-list
-          :let [turns (get-turns dir)
-                all-steps (if (< steps 2) (conj turns [dir (+ steps 1)]) turns)]]
-      (for [step all-steps
+    (for [[[pos dir steps] loss] update-list]
+      (for [step (get-next-steps dir steps)
             :let [new-pos (take-step pos (first step))]
             :when (can-step city new-pos)]
-        [[new-pos (first step) (second step)] (+ loss ((:lookup city) new-pos))]))))
+        (let [new-loss (+ loss ((:lookup city) new-pos))
+              k [new-pos (first step) (second step)]]
+          #_(println "potential update:" new-pos new-loss step)
+          [k new-loss])))))
 
 (defn create-update-map [[[k loss] & remaining] update-map]
   (let [current (get update-map k 999999)
@@ -62,8 +68,7 @@
     (println "Iterating with" (count update-list) "updates")
     (if (empty? next-updates)
       (let [pos [(- (:X city) 1) (- (:Y city) 1)]]
-        (println lowest-temps)
-        (apply min (for [dir [:l :r :u :d] step [0 1 2]]
+        (apply min (for [dir [:l :r :u :d] step (range 3 10)]
                      (get lowest-temps [pos dir step]))))
       (recur city next-updates new-lowest-temps))))
 
