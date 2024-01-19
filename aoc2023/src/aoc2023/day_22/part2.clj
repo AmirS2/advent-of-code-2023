@@ -63,6 +63,15 @@
           :when (is-disintegratable b above same-level)]
       b)))
 
+(defn count-drops [bricks]
+  (apply
+    +
+    (for [n (range (count bricks))
+          :let [sb (into (subvec bricks 0 n) (subvec bricks (inc n)))
+                [_ c] (settle sb 0 0)]]
+      (do (println c)
+      c))))
+
 (defn -main
   "Read the input and solve it"
   [& args]
@@ -70,11 +79,9 @@
     (let [result (process (line-seq rdr))
           sorted-bricks (sort-bricks result)
           [settled, _] (settle sorted-bricks 0 0)
-          disintegratable (find-disintegratable settled)]
+          drops (count-drops (sort-bricks settled))]
       #_(println sorted-bricks)
       (dorun (map println settled))
-      (println "Disintegratable")
-      (dorun (map println disintegratable))
-      (printf "Count is: %d\n" (count disintegratable))
+      (printf "Count is: %d\n" drops)
       ))
 )
