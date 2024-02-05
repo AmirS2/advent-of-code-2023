@@ -6,7 +6,7 @@
   (math/sqrt (apply + (map #(* % %) v ))))
 
 (defn parse-hailstone [line]
-  (let [[px py pz vx vy vz] (map #(Double/parseDouble %) (str/split line #" ?[,@] +"))]
+  (let [[px py pz vx vy vz] (map #(Long/parseLong %) (str/split line #" ?[,@] +"))]
     {:pos [px py pz] :path [vx vy vz] :len (vec-len [vx vy vz])}))
 
 (defn process [lines]
@@ -50,11 +50,11 @@
   (let [dx (- ex hx)
         dy (- ey hy)
         dz (- ez hz)
-        bl (vec-len [bx by bz])]
+        el (vec-len [bx by bz])]
     (/ (+ (* bx (- (* dy vz) (* dz vy)))
           (* by (- (* dz vx) (* dx vz)))
           (* bz (- (* dx vy) (* dy vx))))
-       bl vl)))
+       el vl)))
 
 (defn calc-derivs [[bx by bz] [ex ey ez] {[hx hy hz] :pos [vx vy vz] :path :as h}]
   (let [dx (- ex hx)
@@ -80,7 +80,7 @@
     (reduce #(vector (map + (first %1) (first %2)) (map + (second %1) (second %2))) dbsdes)))
 
 (defn calc-delta [b e hailstones]
-  (let [del 1e-1
+  (let [del 1e-7
         base (calc-total-offset b e hailstones)
         dx (calc-total-offset (map + b [del 0 0]) e hailstones)
         dy (calc-total-offset (map + b [0 del 0]) e hailstones)
@@ -96,6 +96,7 @@
     (if (zero? o)
       [b e]
       (let [[db de] (calc-delta b e hailstones)
+            _ (println db de)
             ssq (apply + (map #(* % %) (concat db de)))
             s (math/sqrt ssq)
             delta (/ o s)
@@ -104,31 +105,13 @@
         (println "Recur" bb ee o s delta db de)
         (recur bb ee hailstones)))))
 
-(defn prime-factors [n factors]
-  (if (= n 1)
-    factors
-    (let [next-fac (loop [t 2] (if (not= (mod n t) 0) (recur (inc t)) t))]
-      (recur (/ n next-fac) (conj factors next-fac)))))
-
-(defn gcd [a b]
-  (last (for [x (range 1 (inc a)) :when (= (mod a x) (mod b x) 0)] x)))
-
-(defn find-possible [p1 p2 v1 v2]
-  (let [d (- p2 p1)]
-    (for [v (range 20)
-          :when (= (mod d (gcd (- v v2) (- v2 v1))) 0)]
-      v)))
-
-(defn find-possible-velocities [[h1 h2 h3 h4 & remaining]]
-  (loop [[h1 h2 & remaining] hailstones]
-
 (defn -main
   "Read the input and solve it"
   [& args]
   (with-open [rdr (clojure.java.io/reader *in*)]
     (let [hailstones (process (line-seq rdr))]
       (println hailstones)
-      (find-intersect-line [1 1 1] [(double 3e14) (double 3e14) (double 3e14)] hailstones)
+      (find-intersect-line [10 20 30] [40 50 60] hailstones)
       #_(printf "Sum is: %d\n" (check-all-collisions hailstones))
       ))
 )

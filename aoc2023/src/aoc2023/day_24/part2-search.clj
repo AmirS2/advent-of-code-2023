@@ -50,11 +50,11 @@
   (let [dx (- ex hx)
         dy (- ey hy)
         dz (- ez hz)
-        bl (vec-len [bx by bz])]
+        el (vec-len [bx by bz])]
     (/ (+ (* bx (- (* dy vz) (* dz vy)))
           (* by (- (* dz vx) (* dx vz)))
           (* bz (- (* dx vy) (* dy vx))))
-       bl vl)))
+       el vl)))
 
 (defn calc-derivs [[bx by bz] [ex ey ez] {[hx hy hz] :pos [vx vy vz] :path :as h}]
   (let [dx (- ex hx)
@@ -80,47 +80,33 @@
     (reduce #(vector (map + (first %1) (first %2)) (map + (second %1) (second %2))) dbsdes)))
 
 (defn calc-delta [b e hailstones]
-  (let [del 1e-1
-        base (calc-total-offset b e hailstones)
-        dx (calc-total-offset (map + b [del 0 0]) e hailstones)
-        dy (calc-total-offset (map + b [0 del 0]) e hailstones)
-        dz (calc-total-offset (map + b [0 0 del]) e hailstones)
-        di (calc-total-offset b (map + e [del 0 0]) hailstones)
-        dj (calc-total-offset b (map + e [0 del 0]) hailstones)
-        dk (calc-total-offset b (map + e [0 0 del]) hailstones)
-        calc #(/ (- % base) del)]
-    [(map calc [dx dy dz]) (map calc [di dj dk])]))
+  (let [base (calc-total-offset b e hailstones)
+        dx (calc-total-offset (map + b [1e-7 0 0]) e hailstones)
+        dy (calc-total-offset (map + b [0 1e-7 0]) e hailstones)
+        dz (calc-total-offset (map + b [0 0 1e-7]) e hailstones)
+        di (calc-total-offset b (map + e [1e-7 0 0]) hailstones)
+        dj (calc-total-offset b (map + e [0 1e-7 0]) hailstones)
+        dk (calc-total-offset b (map + e [0 0 1e-7]) hailstones)]
+    [(map (partial - base) [dx dy dz]) (map (partial - base) [di dj dk])]))
 
-(defn find-intersect-line [b e hailstones]
-  (let [o (calc-total-offset b e hailstones)]
-    (if (zero? o)
-      [b e]
-      (let [[db de] (calc-delta b e hailstones)
-            ssq (apply + (map #(* % %) (concat db de)))
-            s (math/sqrt ssq)
-            delta (/ o s)
-            bb (map - b (map #(/ (* delta %) s) db))
-            ee (map - e (map #(/ (* delta %) s) de))]
-        (println "Recur" bb ee o s delta db de)
-        (recur bb ee hailstones)))))
-
-(defn prime-factors [n factors]
-  (if (= n 1)
-    factors
-    (let [next-fac (loop [t 2] (if (not= (mod n t) 0) (recur (inc t)) t))]
-      (recur (/ n next-fac) (conj factors next-fac)))))
-
-(defn gcd [a b]
-  (last (for [x (range 1 (inc a)) :when (= (mod a x) (mod b x) 0)] x)))
-
-(defn find-possible [p1 p2 v1 v2]
-  (let [d (- p2 p1)]
-    (for [v (range 20)
-          :when (= (mod d (gcd (- v v2) (- v2 v1))) 0)]
-      v)))
-
-(defn find-possible-velocities [[h1 h2 h3 h4 & remaining]]
-  (loop [[h1 h2 & remaining] hailstones]
+(defn find-intersect-line [r [xx yy zz ii jj kk] hailstones]
+  (let [s (* r 5)
+        spread #(range (- % s) (+ % s) r)
+        results
+        (for [x (spread xx)
+              y (spread yy)
+              z (spread zz)
+              i (spread ii)
+              j (spread jj)
+              k (spread kk)
+              :when (not (and (zero? i) (zero? j) (zero? k)))]
+          (let [o (calc-total-offset [i j k] [x y z] hailstones)]
+            [o x y z i j k]))
+        best (apply min-key first results)]
+    (println "Recur" r best)
+    (if (= r 1)
+      best
+      (recur (int (math/ceil (/ r 2))) (rest best) (take 5 hailstones)))))
 
 (defn -main
   "Read the input and solve it"
@@ -128,7 +114,7 @@
   (with-open [rdr (clojure.java.io/reader *in*)]
     (let [hailstones (process (line-seq rdr))]
       (println hailstones)
-      (find-intersect-line [1 1 1] [(double 3e14) (double 3e14) (double 3e14)] hailstones)
+      (find-intersect-line 3e13 [3e14 3e14 3e14 0 0 0] hailstones)
       #_(printf "Sum is: %d\n" (check-all-collisions hailstones))
       ))
 )
