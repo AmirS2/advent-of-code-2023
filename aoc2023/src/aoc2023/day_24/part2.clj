@@ -6,7 +6,7 @@
   (math/sqrt (apply + (map #(* % %) v ))))
 
 (defn parse-hailstone [line]
-  (let [[px py pz vx vy vz] (map #(Double/parseDouble %) (str/split line #" ?[,@] +"))]
+  (let [[px py pz vx vy vz] (map #(Long/parseLong %) (str/split line #" ?[,@] +"))]
     {:pos [px py pz] :path [vx vy vz] :len (vec-len [vx vy vz])}))
 
 (defn process [lines]
@@ -111,24 +111,34 @@
       (recur (/ n next-fac) (conj factors next-fac)))))
 
 (defn gcd [a b]
-  (last (for [x (range 1 (inc a)) :when (= (mod a x) (mod b x) 0)] x)))
+  (last (for [x (range 1 (inc (abs a))) :when (= (mod a x) (mod b x) 0)] x)))
 
-(defn find-possible [p1 p2 v1 v2]
-  (let [d (- p2 p1)]
-    (for [v (range 20)
-          :when (= (mod d (gcd (- v v2) (- v2 v1))) 0)]
+(defn find-possible [p1 p2 v1 v2 vels]
+  (let [d (abs (- p2 p1))]
+    (for [v vels
+          :let [_ (println v p1 p2 v1 v2)]
+          :when (and (not= v v2) (not= v2 v1))
+          :when (= (mod d (gcd (abs (- v v2)) (abs (- v2 v1)))) 0)]
       v)))
 
-(defn find-possible-velocities [[h1 h2 h3 h4 & remaining]]
-  (loop [[h1 h2 & remaining] hailstones]
+(defn find-possible-velocities
+  [[{[h1x h1y h1z] :pos [h1i h1j h1k] :path :as h1}
+    {[h2x h2y h2z] :pos [h2i h2j h2k] :path :as h2}
+    & remaining]
+   vels]
+  (println "FPV" h1x h2x h1i h2i vels)
+  (if (empty? remaining)
+    vels
+    (recur (cons h1 remaining) (find-possible h1x h2x h1i h2i vels))))
 
 (defn -main
   "Read the input and solve it"
   [& args]
   (with-open [rdr (clojure.java.io/reader *in*)]
-    (let [hailstones (process (line-seq rdr))]
+    (let [hailstones (process (line-seq rdr))
+          possible-vels (find-possible-velocities hailstones (range 400))]
       (println hailstones)
-      (find-intersect-line [1 1 1] [(double 3e14) (double 3e14) (double 3e14)] hailstones)
+      (println possible-vels)
       #_(printf "Sum is: %d\n" (check-all-collisions hailstones))
       ))
 )
